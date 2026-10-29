@@ -45,6 +45,13 @@ label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .days{font-weight:600;margin:16px 0 6px;text-transform:capitalize}
 .hours{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px}
+/* вкладки настроек и закреплённая внизу кнопка сохранения */
+.stabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.stabs button{min-height:40px;padding:8px 16px;background:transparent;color:var(--muted)}
+.stabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.savebar{position:sticky;bottom:0;z-index:3;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;background:var(--bg);border-top:1px solid var(--line)}
+.savebar .msg{margin:0;color:var(--muted)}
+.savebar .msg.good{color:var(--ok)}.savebar .msg.err{color:var(--red)}
 /* цены услуги: по рамке на уровень мастера, внутри цена и минуты */
 .lvls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
 .lvl{border:1px solid var(--line);border-radius:14px;padding:10px 12px}
@@ -96,7 +103,6 @@ input,select{border-radius:14px}
   </div>
 
   <div id="pc" style="display:none">
-    <p class="hint">Изменения применяются сразу после сохранения. Фото мастеров загружаются в репозиторий как m1.jpg, m2.jpg и так далее по номеру мастера.</p>
     <div id="cfg"></div>
   </div>
 </div>
@@ -241,10 +247,13 @@ function field(label, obj, key, type){
   i.oninput = function(){ obj[key] = type === 'number' ? Number(i.value) : i.value; };
   l.appendChild(i); return l;
 }
+// вкладки настроек: показывается один блок, сохраняются все сразу
+var SECS = [['svc', 'Услуги и цены'], ['mst', 'Мастера и график'], ['shop', 'Салон'], ['gen', 'Общие']], SEC = 'svc';
 function renderCfg(){
   var box = $('cfg'); box.innerHTML = '';
+  var bar = el('div', 'stabs'); bar.setAttribute('role', 'tablist'); box.appendChild(bar);
   var g = el('div', 'card'); g.appendChild(el('h3', '', 'Общие'));
-  g.appendChild(field('Записываться на дней вперёд (1-120)', model, 'ahead', 'number')); box.appendChild(g);
+  g.appendChild(field('Записываться на дней вперёд (1-120)', model, 'ahead', 'number')); g.dataset.sec = 'gen'; box.appendChild(g);
 
   var s = el('div', 'card'); s.appendChild(el('h3', '', 'Салон'));
   var r1 = el('div', 'row'); ['name', 'address', 'note', 'phone', 'phone2', 'email', 'vk', 'tg'].forEach(function(k, i){
@@ -257,7 +266,7 @@ function renderCfg(){
     s.appendChild(r);
   });
   var ah = el('button', '', 'Добавить строку'); ah.type = 'button'; ah.onclick = function(){ model.shop.hours.push(['', '']); renderCfg(); }; s.appendChild(ah);
-  box.appendChild(s);
+  s.dataset.sec = 'shop'; box.appendChild(s);
 
   var sv = el('div', 'card'); sv.appendChild(el('h3', '', 'Услуги и цены'));
   sv.appendChild(el('p', 'hint', 'Цена и минуты для каждого уровня мастера. Пустая цена: уровень эту услугу не делает. Пустые минуты: на сайте видна цена, но записаться можно только по телефону.'));
@@ -283,10 +292,10 @@ function renderCfg(){
   });
   var as = el('button', '', 'Добавить услугу'); as.type = 'button'; as.style.marginTop = '12px';
   as.onclick = function(){ var pr = {}; pr[model.levels[0]] = {price: 1000, minutes: 30}; model.services.push({name: 'Новая услуга', group: 'Дополнительно', desc: '', prices: pr}); renderCfg(); }; sv.appendChild(as);
-  box.appendChild(sv);
+  sv.dataset.sec = 'svc'; box.appendChild(sv);
 
   var ms = el('div', 'card'); ms.appendChild(el('h3', '', 'Мастера и график'));
-  ms.appendChild(el('p', 'hint', 'Часы в формате 10:00-21:00 (шаг 30 минут). Пустое поле означает выходной. Мастер без рабочих дней скрыт на сайте. Удалить мастера нельзя, чтобы не потерять записи.'));
+  ms.appendChild(el('p', 'hint', 'Часы в формате 10:00-21:00 (шаг 30 минут). Пустое поле означает выходной. Мастер без рабочих дней скрыт на сайте. Удалить мастера нельзя, чтобы не потерять записи. Фото мастера — файл m1.jpg, m2.jpg и так далее (номер в скобках у имени) в папке сайта на GitHub.'));
   model.masters.forEach(function(m){
     var c = el('div'); c.style.cssText = 'border-top:1px solid var(--line);padding-top:10px;margin-top:10px';
     var r = el('div', 'row'); r.appendChild(field('Имя (' + m.id + ')', m, 'name')); r.appendChild(field('Стаж', m, 'exp'));
@@ -302,10 +311,16 @@ function renderCfg(){
     DAYS.forEach(function(d){ hr[d] = ''; });
     model.masters.push({id: 'm' + n, name: 'Новый мастер', level: model.levels[model.levels.length - 1], exp: '', hours: hr}); renderCfg();
   };
-  ms.appendChild(am); box.appendChild(ms);
+  ms.appendChild(am); ms.dataset.sec = 'mst'; box.appendChild(ms);
+
+  SECS.forEach(function(x){
+    var b = el('button', SEC === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', SEC === x[0]);
+    b.onclick = function(){ SEC = x[0]; renderCfg(); window.scrollTo(0, 0); }; bar.appendChild(b);
+  });
+  [].forEach.call(box.querySelectorAll('.card[data-sec]'), function(c){ c.hidden = c.dataset.sec !== SEC; });
 
   var sb = el('button', 'primary', 'Сохранить настройки'); sb.type = 'button';
-  var msg = el('p', 'msg');
+  var msg = el('p', 'msg', 'Сохраняются все вкладки сразу, на сайте изменения появятся в течение минуты.');
   sb.onclick = function(){
     msg.className = 'msg'; msg.textContent = 'Сохраняем…';
     api('/admin/config', {config: model}).then(function(){
@@ -313,7 +328,7 @@ function renderCfg(){
       renderManual(); renderFilter(); renderBooks();
     }).catch(function(e){ msg.className = 'msg err'; msg.textContent = e.message; });
   };
-  box.appendChild(sb); box.appendChild(msg);
+  var save = el('div', 'savebar'); save.appendChild(sb); save.appendChild(msg); box.appendChild(save);
 }
 show();
 </script>

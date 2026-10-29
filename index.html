@@ -29,9 +29,10 @@ a{color:inherit}
 .top{position:sticky;top:0;z-index:40;transition:background .3s}
 .top.solid{background:rgba(var(--shade),.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;gap:24px;height:72px}
-.logo{display:flex;align-items:center;gap:12px;font-family:Oswald,sans-serif;font-weight:700;font-size:22px;letter-spacing:.08em;text-decoration:none;text-transform:uppercase}
-.logo img{width:52px;height:52px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
-.logo small{display:block;font:500 11px/1.2 "IBM Plex Sans",sans-serif;letter-spacing:.2em;color:var(--gold)}
+/* в шапке горизонтальная полоса логотипа: знак и надпись крупно, чтобы читались */
+.logo{display:flex;align-items:center;flex:none}
+.logo img{display:block;height:58px;width:auto;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+@media (max-width:760px){.logo img{height:46px}}
 .nav{display:flex;gap:28px;margin-left:auto}
 .nav a{text-decoration:none;font-size:15px;color:var(--muted)}
 .nav a:hover{color:var(--ink)}
@@ -87,7 +88,6 @@ h2 em{font-style:normal;color:var(--gold)}
 .film::before,.film::after{content:"";position:absolute;left:0;right:0;height:12px;background:repeating-linear-gradient(90deg,transparent 0 10px,#C9B49C 10px 24px,transparent 24px 34px);opacity:.5}
 .film::before{top:5px}.film::after{bottom:5px}
 .strip{display:flex;gap:12px;width:max-content;animation:run 70s linear infinite}
-.film:hover .strip{animation-play-state:paused}
 .strip img{height:260px;width:auto;border-radius:10px;display:block}
 @media (max-width:760px){.strip img{height:180px}}
 @media (prefers-reduced-motion:reduce){.ticker div,.strip{animation:none}.film{overflow-x:auto}}
@@ -188,6 +188,8 @@ label{font-weight:600;font-size:15px;display:grid;gap:6px}
 input,select{font:inherit;font-size:16px;padding:12px 14px;min-height:48px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;width:100%}
 input:focus,select:focus{border-color:var(--gold);outline:none}
 .sum{font-size:15px;color:var(--muted);margin-top:-6px}
+.sum a{color:var(--muted);text-decoration:underline dotted;text-underline-offset:3px}
+.sum a:hover{color:var(--gold)}
 .sum b{color:var(--ink)}
 .field{display:grid;gap:8px}
 .lbl{font-weight:600;font-size:15px}
@@ -220,7 +222,7 @@ input:focus,select:focus{border-color:var(--gold);outline:none}
 
 <header class="top" id="top">
   <div class="wrap">
-    <a class="logo" href="#" aria-label="Барбершоп «Эксперт», наверх"><img src="img/logo.jpg" alt="" width="52" height="52"><span>Эксперт<small>барбершоп</small></span></a>
+    <a class="logo" href="#" aria-label="Барбершоп «Эксперт», наверх"><img src="img/logo-wide.jpg" alt="Эксперт барбер шоп" width="148" height="58"></a>
     <nav class="nav" aria-label="Разделы">
       <a href="#uslugi">Услуги и цены</a><a href="#mastera">Мастера</a><a href="#otzyvy">Отзывы</a><a href="#kontakty">Контакты</a>
     </nav>
@@ -358,9 +360,9 @@ input:focus,select:focus{border-color:var(--gold);outline:none}
     <div class="dh"><h2 id="dtitle" tabindex="-1">Запись</h2><button class="x" type="button" id="dclose" aria-label="Закрыть">×</button></div>
     <div class="db">
       <form id="f">
-        <label>Услуга<select name="service" id="svc"></select></label>
         <label>Мастер<select name="master" id="master"></select></label>
-        <p class="sum" id="sum"></p>
+        <label>Услуга<select name="service" id="svc"></select></label>
+        <p class="sum"><span id="sum"></span> Цена зависит от уровня мастера, <a href="#uslugi" id="pricelink">смотрите прайс</a>.</p>
         <div class="field"><span class="lbl">День</span><div class="cal" id="days"></div></div>
         <div class="field"><span class="lbl">Время</span><div id="times" aria-live="polite"></div></div>
         <label>Имя<input name="name" required autocomplete="given-name" maxlength="40" placeholder="Как к вам обращаться"></label>
@@ -414,7 +416,7 @@ function openBook(opts){
 }
 function closeBook(){
   document.body.classList.remove('lock'); book.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true');
-  if (lastFocus) lastFocus.focus();
+  if (lastFocus) lastFocus.focus({preventScroll: true});
 }
 document.addEventListener('click', function(e){ var b = e.target.closest('[data-book]'); if (b){ e.preventDefault(); openBook({service: b.dataset.service, master: b.dataset.master, level: b.dataset.level}); } });
 document.getElementById('ovl').onclick = closeBook;
@@ -438,8 +440,6 @@ var MASTERS = CFG.masters.map(function(m){ return {id: m.id, name: m.name, level
   .filter(function(m){ return Object.keys(m.h).length; });
 function lvOf(s, m){ var p = s.prices[m.level]; return p && p.minutes ? p : null; }
 function svcByName(n){ return SERVICES.filter(function(s){ return s.name === n; })[0]; }
-function bookable(s){ return MASTERS.some(function(m){ return lvOf(s, m); }); }
-function minPrice(s){ return Math.min.apply(null, LEVELS.filter(function(l){ return s.prices[l]; }).map(function(l){ return s.prices[l].price; })); }
 
 var brandText = 'Барбершоп «' + SHOP.name + '»';
 document.getElementById('fbrand').textContent = brandText;
@@ -520,22 +520,27 @@ var nameEl = form.elements['name'], phoneEl = form.elements['phone'];
 var svcEl = document.getElementById('svc'), masterEl = document.getElementById('master');
 var busy = {}, selDate = null, selTime = null, DAYS = [], byIso = {}, WEEKS = [], calOpen = false, weekIdx = 0, curMaster = MASTERS[0];
 
-SERVICES.filter(bookable).forEach(function(s){
-  var o = el('option', '', s.name + ' — от ' + money(minPrice(s))); o.value = s.name; svcEl.appendChild(o);
+// Сначала мастер (без цен), потом услуги этого мастера с его ценой
+MASTERS.forEach(function(m){
+  if (!SERVICES.some(function(s){ return lvOf(s, m); })) return;
+  var o = el('option', '', m.name + ' · ' + m.level.toLowerCase()); o.value = m.id; masterEl.appendChild(o);
 });
 function curSvc(){ return svcByName(svcEl.value); }
-function fillMasters(){
-  var s = curSvc(); masterEl.innerHTML = '';
-  MASTERS.forEach(function(m){ var p = lvOf(s, m); if (!p) return;
-    var o = el('option', '', m.name + ' · ' + m.level.toLowerCase() + ' · ' + money(p.price)); o.value = m.id; masterEl.appendChild(o); });
-  if (!lvOf(s, curMaster)) curMaster = MASTERS.filter(function(m){ return lvOf(s, m); })[0];
-  masterEl.value = curMaster.id;
+function fillServices(want){
+  var keep = want || svcEl.value; svcEl.innerHTML = '';
+  SERVICES.forEach(function(s){ var p = lvOf(s, curMaster); if (!p) return;
+    var o = el('option', '', s.name + ' — ' + money(p.price)); o.value = s.name; svcEl.appendChild(o); });
+  svcEl.value = keep; if (svcEl.selectedIndex < 0) svcEl.selectedIndex = 0; // услуги нет у этого мастера: берём первую
 }
 function renderSum(){
   var p = lvOf(curSvc(), curMaster), t = document.getElementById('sum'); t.textContent = '';
   t.appendChild(document.createTextNode('Стоимость: ')); t.appendChild(el('b', '', money(p.price)));
-  t.appendChild(document.createTextNode(' · примерно ' + p.minutes + ' мин'));
+  t.appendChild(document.createTextNode(' · примерно ' + p.minutes + ' мин.'));
 }
+document.getElementById('pricelink').onclick = function(e){
+  e.preventDefault(); closeBook();
+  setTimeout(function(){ document.getElementById('uslugi').scrollIntoView({behavior: 'smooth'}); }, 50);
+};
 
 nameEl.addEventListener('input', function(){
   var pos = this.selectionStart;
@@ -620,8 +625,8 @@ function pickDay(x){
   WEEKS.forEach(function(w, i){ if (w.some(function(d){ return isoOf(d) === x.iso; })) weekIdx = i; });
   renderDays(); renderTimes(); loadBusy(x);
 }
-function setMaster(m){
-  curMaster = m; masterEl.value = m.id; buildDays(); renderSum();
+function setMaster(m, want){
+  curMaster = m; masterEl.value = m.id; fillServices(want); selTime = null; buildDays(); renderSum();
   pickDay((selDate && byIso[selDate.iso]) || DAYS[0]);
 }
 
@@ -649,7 +654,7 @@ function renderTimes(){
   });
   if (!any) box.appendChild(el('p', '', 'На этот день у мастера нет свободного времени. Выберите другой день или другого мастера.'));
 }
-svcEl.addEventListener('change', function(){ selTime = null; var before = curMaster; fillMasters(); if (curMaster !== before) setMaster(curMaster); else { renderSum(); renderTimes(); } });
+svcEl.addEventListener('change', function(){ selTime = null; renderSum(); renderTimes(); });
 masterEl.addEventListener('change', function(){
   setMaster(MASTERS.filter(function(m){ return m.id === masterEl.value; })[0]);
 });
@@ -678,26 +683,22 @@ form.addEventListener('submit', async function(e){
   }
 });
 
-fillMasters(); setMaster(curMaster);
+curMaster = MASTERS.filter(function(m){ return masterEl.querySelector('option[value="' + m.id + '"]'); })[0];
+setMaster(curMaster);
 api = { prefill: function(o){
   if (form.style.display === 'none'){ // после отправленной заявки форма снова пустая
     form.reset(); form.style.display = ''; document.getElementById('ok').style.display = 'none';
     var sb = form.querySelector('button[type=submit]'); sb.disabled = false; sb.textContent = 'Отправить заявку';
     delete busy[busyKey(selDate)];
-    fillMasters(); setMaster(curMaster);
+    setMaster(curMaster);
   }
-  if (o.master){
-    var m = MASTERS.filter(function(x){ return x.id === o.master; })[0];
-    if (m && !lvOf(curSvc(), m)){ var s = SERVICES.filter(function(x){ return bookable(x) && lvOf(x, m); })[0]; if (s) svcEl.value = s.name; }
-    if (m){ fillMasters(); setMaster(m); }
-  } else if (o.service && svcByName(o.service)){
-    svcEl.value = o.service; var before = curMaster; selTime = null;
-    if (o.level && curMaster.level !== o.level){ // из прайса: первый мастер нужного уровня
-      var lm = MASTERS.filter(function(x){ return x.level === o.level && lvOf(svcByName(o.service), x); })[0]; if (lm) curMaster = lm;
-    }
-    fillMasters();
-    if (curMaster !== before) setMaster(curMaster); else { renderSum(); renderTimes(); }
-  }
+  var m = curMaster, s = o.service && svcByName(o.service);
+  if (o.master) m = MASTERS.filter(function(x){ return x.id === o.master; })[0] || m;
+  else if (s && !(lvOf(s, m) && (!o.level || m.level === o.level))) // из прайса: первый мастер нужного уровня
+    m = MASTERS.filter(function(x){ return lvOf(s, x) && (!o.level || x.level === o.level); })[0] || m;
+  var want = s ? s.name : ''; // fillServices оставит эту услугу, если она есть у мастера
+  if (m !== curMaster) setMaster(m, want);
+  else { fillServices(want); selTime = null; renderSum(); renderTimes(); }
 } };
 }
 
