@@ -110,7 +110,8 @@ h2 em{font-style:normal;color:var(--gold)}
 .strip{display:flex;gap:12px;width:max-content;animation:run 70s linear infinite}
 .strip img{height:260px;width:auto;border-radius:10px;display:block}
 @media (max-width:760px){.strip img{height:180px}}
-@media (prefers-reduced-motion:reduce){.ticker div,.strip{animation:none}.film{overflow-x:auto}}
+/* при «уменьшении движения» в телефоне ленты не стоят, а плывут медленнее: так просил владелец сайта */
+@media (prefers-reduced-motion:reduce){.ticker div{animation-duration:90s}.strip{animation-duration:160s}}
 
 /* преимущества */
 .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
