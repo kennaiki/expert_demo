@@ -91,7 +91,6 @@ button,a,select,input{touch-action:manipulation}
 .ticker span::after{content:"";display:inline-block;width:16px;height:16px;margin-left:28px;vertical-align:-2px;opacity:.7;background:currentColor;
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cpath d='M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12'/%3E%3C/svg%3E") center/contain no-repeat;
   mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cpath d='M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12'/%3E%3C/svg%3E") center/contain no-repeat}
-@keyframes run{to{transform:translateX(-100%)}}
 
 main{overflow-x:clip}
 section{padding:96px 0}
@@ -110,11 +109,12 @@ h2 em{font-style:normal;color:var(--gold)}
 .film{background:#120A07;padding:22px 0;transform:rotate(-2deg);margin:40px -20px;overflow:hidden;position:relative}
 .film::before,.film::after{content:"";position:absolute;left:0;right:0;height:12px;background:repeating-linear-gradient(90deg,transparent 0 10px,#C9B49C 10px 24px,transparent 24px 34px);opacity:.5}
 .film::before{top:5px}.film::after{bottom:5px}
-.strip{display:flex;gap:12px;width:max-content;animation:run 70s linear infinite}
+.reel{overflow:hidden}
+/* padding-right = gap, чтобы две половины дорожки были ровно одинаковой ширины */
+.strip{display:flex;gap:12px;padding-right:12px;width:max-content}
 .strip img{height:260px;width:auto;border-radius:10px;display:block}
 @media (max-width:760px){.strip img{height:180px}}
 /* при «уменьшении движения» в телефоне ленты не стоят, а плывут медленнее: так просил владелец сайта */
-@media (prefers-reduced-motion:reduce){.strip{animation-duration:160s}}
 
 /* преимущества */
 .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
@@ -298,7 +298,7 @@ input:user-invalid{border-color:#E88A6E}
     </div>
   </section>
 
-  <div class="film" aria-label="Фото барбершопа"><div class="strip" id="strip"></div></div>
+  <div class="film" aria-label="Фото барбершопа"><div class="reel"><div class="strip" id="strip"></div></div></div>
 
   <section id="pochemu">
     <div class="wrap">
@@ -451,13 +451,30 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && nav.
   new IntersectionObserver(function(e){ fab.classList.toggle('off', e[0].isIntersecting); fab.tabIndex = e[0].isIntersecting ? -1 : 0; }, {threshold: .35}).observe(hero);
 })();
 
+// Бесконечная лента: дорожка из двух одинаковых половин прокручивается внутри рамки (scrollLeft).
+// Не transform: длинную сдвигаемую полосу Safari на iPhone через пару секунд перестаёт рисовать.
+// speed — пикселей в секунду, slow — при «уменьшении движения» в настройках телефона.
+function marquee(box, track, speed, slow){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) speed = slow;
+  var pos = 0, last = null;
+  function step(ts){
+    if (last !== null){
+      var half = track.offsetWidth / 2;
+      if (half > 0){ pos = (pos + speed * Math.min(ts - last, 100) / 1000) % half; box.scrollLeft = pos; }
+    }
+    last = ts; requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 // Лента фото: два одинаковых набора для бесконечной прокрутки
 (function(){
   var s = document.getElementById('strip');
   for (var k = 0; k < 2; k++) GALLERY.forEach(function(g){
-    var i = document.createElement('img'); i.src = 'img/' + g + '.jpg'; i.loading = 'lazy';
+    var i = document.createElement('img'); i.src = 'img/' + g + '.jpg'; i.decoding = 'async'; // без lazy: ширина ленты должна быть известна сразу, иначе она дёргается
     i.alt = k ? '' : 'Фото барбершопа «Эксперт»'; if (k) i.setAttribute('aria-hidden', 'true'); s.appendChild(i);
   });
+  marquee(s.parentNode, s, 60, 25);
 })();
 
 // Выезжающая форма
@@ -516,14 +533,7 @@ var vkb = document.getElementById('vkbtn'); if (SHOP.vk) vkb.href = SHOP.vk; els
 var tick = ['Номинант Премии 2ГИС 2026', 'Победитель Премии 2ГИС 2019', '5,0 в 2ГИС', hoursText, SHOP.address.replace(/^Красноярск, /, '')];
 var tk = document.getElementById('tick'); // 4 повтора: две одинаковые половины, каждая шире экрана
 for (var k = 0; k < 4; k++) tick.forEach(function(x){ tk.appendChild(el('span', '', x)); });
-(function(){ // прокрутка строки: ~70 пикселей в секунду, при «уменьшении движения» медленнее
-  var box = tk.parentNode, speed = matchMedia('(prefers-reduced-motion: reduce)').matches ? 30 : 70, pos = 0, last = null;
-  function step(ts){
-    if (last !== null){ var half = tk.offsetWidth / 2; pos = (pos + speed * Math.min(ts - last, 100) / 1000) % half; box.scrollLeft = pos; }
-    last = ts; requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-})();
+marquee(tk.parentNode, tk, 70, 30);
 
 // Прайс: группа -> строки услуг, в каждой строке по ячейке на уровень мастера
 var pl = document.getElementById('prices');
